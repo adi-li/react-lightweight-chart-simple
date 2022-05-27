@@ -5,9 +5,9 @@ A simple react wrapper for [lightweight-charts](https://github.com/tradingview/l
 ## Installation
 
 ```bash
-npm install --save react-lightweight-charts lightweight-charts
+npm install --save react-lightweight-charts-simple lightweight-charts
 // or
-yarn add react-lightweight-charts lightweight-charts
+yarn add react-lightweight-charts-simple lightweight-charts
 ```
 
 ## Usage
