@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useSeries } from '../hooks/useSeries';
 
 /**
- * Should only be placed inside any `<Series />`
+ * Create a price line for the series, should only be nested inside any series component.
  */
 export const PriceLine = (props: Partial<PriceLineOptions>) => {
   const series = useSeries();

@@ -14,19 +14,47 @@ import { ChartContext } from '../context';
 
 interface ChartProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onClick'> {
+  /**
+   * The width of chart in pixel.
+   */
   width?: number;
+  /**
+   * The height of chart in pixel.
+   */
   height?: number;
+  /**
+   * The chart options, please refer to `lightweight-charts` documents.
+   * Memoization is recommended to prevent calling `chart.applyOptions()` multiple times.
+   */
   options?: Omit<DeepPartial<ChartOptions>, 'width' | 'height'>;
+  /**
+   * Handler for chart click event (related API: `chart.subscribeClick()`).
+   */
   onClick?: MouseEventHandler;
+  /**
+   * Handler for crosshair move event (related API: `chart.subscribeCrosshairMove()`).
+   */
   onCrosshairMove?: MouseEventHandler;
+  /**
+   * Handler for time scale size change event (related API: `chart.timeScale().subscribeSizeChange()`).
+   */
   onTimeScaleSizeChange?: SizeChangeEventHandler;
+  /**
+   * Handler for visible time range change event (related API: `chart.timeScale().subscribeVisibleTimeRangeChange()`).
+   */
   onVisibleTimeRangeChange?: TimeRangeChangeEventHandler;
+  /**
+   * Handler for visible logical range change event (related API: `chart.timeScale().subscribeVisibleLogicalRangeChange()`).
+   */
   onVisibleLogicalRangeChange?: LogicalRangeChangeEventHandler;
+  /**
+   * `ref` for getting chart container, which is a `<div />` element.
+   */
   containerRef?: React.Ref<HTMLDivElement>;
 }
 
 /**
- * This is the main wrapper for the series
+ * The main wrapper for the series.
  */
 export const Chart = React.forwardRef<IChartApi | undefined, ChartProps>(
   function Chart(

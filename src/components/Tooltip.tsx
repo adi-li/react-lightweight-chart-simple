@@ -16,10 +16,15 @@ export type MakeTransform = (
 ) => string | undefined;
 
 interface TooltipProps extends React.HTMLAttributes<HTMLDivElement> {
-  // make the tooltip content base on the crosshair event
+  /**
+   * Should return a react node which can be varied base on the crosshair event.
+   */
   content?: (event: MouseEventParams) => React.ReactNode;
 
-  // transform maker to make the transform string for tooltip, return `undefined` to keep unchanged
+  /**
+   * Should return a transform string for the tooltip wrapper, return `undefined` to keep unchanged.
+   * Useful for changing the tooltip position.
+   */
   makeTransform?: MakeTransform;
 }
 
@@ -36,8 +41,10 @@ export const DEFAULT_TOOLTIP_STYLE: React.CSSProperties = {
 
 const DEFAULT_SIZE = { width: 0, height: 0 };
 
-// default transform makes tooltip to be horizontally centered with cursor, and above the cursor
-// tooltip is also bounded inside the chart box and may be below the cursor if not enough vertical space
+/**
+ * Default transform makes tooltip to be horizontally centered with cursor, and above the cursor.
+ * Tooltip is also bounded inside the chart box and may be below the cursor if not enough vertical space.
+ */
 export const DEFAULT_TOOLTIP_MAKE_TRANSFORM: MakeTransform = (
   chart,
   event,
@@ -57,6 +64,10 @@ export const DEFAULT_TOOLTIP_MAKE_TRANSFORM: MakeTransform = (
   return `translate(${x}px, ${y < 0 ? point.y + 20 : y}px)`;
 };
 
+/**
+ * A tooltip will be flow in front of the chart and follow the crosshair movement.
+ * Shoule only be placed inside `<Chart />`.
+ */
 export const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(
   function Tooltip({ content, makeTransform, style, ...rest }, ref) {
     const { chart, containerRef } = useChart();
