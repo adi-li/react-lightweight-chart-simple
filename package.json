@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
+  "version": "0.5.0",
   "license": "MIT",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
@@ -33,6 +33,7 @@
   "name": "react-lightweight-charts-simple",
   "description": "A simple react wrapper for lightweight-charts library",
   "author": "Adi Li (https://github.com/adi-li)",
+  "homepage": "https://github.com/adi-li/react-lightweight-chart-simple",
   "keywords": [
     "lightweight",
     "charts",
