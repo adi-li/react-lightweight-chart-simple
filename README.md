@@ -18,7 +18,7 @@ import { Chart, AreaSeries } from 'react-lightweight-charts';
 
 export const App = () => {
   // Memoize data to prevent setting data multiple times
-  const data = useMemo(() => [
+  const data = React.useMemo(() => [
     { time: '2022-02-01', value: 100 },
     { time: '2022-02-02', value: 300 },
     { time: '2022-02-03', value: 500 },
