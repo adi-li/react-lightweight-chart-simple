@@ -4,7 +4,11 @@ import { ChartContext } from '../context';
 
 /**
  * Get the `lightweight-charts` chart api object and the container `<div />` referrence.
- * Only available inside `<Chart />`.
+ *
+ * ❗Only use inside `<Chart />`.
+ *
+ * @returns object.chart: `IChartApi`
+ * @returns object.containerRef: `React.Ref<HTMLDivElement>`
  */
 export function useChart() {
   return useContext(ChartContext);

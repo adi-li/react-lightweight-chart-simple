@@ -4,7 +4,9 @@ import { useEffect, useRef } from 'react';
 import { useSeries } from '../hooks/useSeries';
 
 /**
- * Create a price line for the series, should only be nested inside any series component.
+ * Create a price line for the series.
+ *
+ * ❗Only use inside `<Series />`.
  */
 export const PriceLine = (props: Partial<PriceLineOptions>) => {
   const series = useSeries();
@@ -23,7 +25,7 @@ export const PriceLine = (props: Partial<PriceLineOptions>) => {
   useEffect(() => {
     return () => {
       if (!priceLineRef.current) return;
-      // suppress error when series is trying remove a removed price line
+      // suppress error when series is trying remove a removed price line or the chart is already removed in parent lifecycle
       try {
         series?.removePriceLine(priceLineRef.current);
       } catch {} // eslint-disable-line no-empty

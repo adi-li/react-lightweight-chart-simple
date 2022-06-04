@@ -13,10 +13,12 @@ import * as React from 'react';
 import {
   AreaSeries,
   Chart,
+  ChartFitContentTrigger,
   HistogramSeries,
   PriceLine,
   Tooltip,
 } from '../../dist';
+import { TooltipContent } from './TooltipContent';
 
 const BASE_TIMESTAMP = Math.floor(Date.now() / 1000);
 const DAY = 86400;
@@ -122,39 +124,28 @@ export const App = () => {
         shape: 'arrowDown',
         color: 'red',
         size: 1,
+        id: 'Marker',
       },
     ],
     [],
   );
 
   return (
-    <div>
-      <Chart height={500} options={chartOptions}>
+    <div style={{ minHeight: '500px', padding: '1rem' }}>
+      <Chart options={chartOptions} disableAutoContentFitOnInit>
         <HistogramSeries data={data} options={histogramOptions}>
+          <Tooltip content={TooltipContent} />
           {Array.from(Array(lines).keys()).map((price) => (
             <PriceLine key={price} price={(price + 1) * 750} />
           ))}
         </HistogramSeries>
+
         <AreaSeries data={areaData} options={areaOptions} markers={markers}>
           {Array.from(Array(lines).keys()).map((price) => (
             <PriceLine key={price} price={(price + 1) * 500} color="green" />
           ))}
         </AreaSeries>
-        <Tooltip
-          content={(event) => (
-            <div
-              style={{
-                padding: 16,
-                borderRadius: 8,
-                backgroundColor: 'rgba(255, 0, 0, 0.5)',
-                color: 'white',
-              }}
-            >
-              {typeof event.time === 'number' &&
-                new Date(event.time * 1000).toLocaleDateString()}
-            </div>
-          )}
-        />
+        <ChartFitContentTrigger deps={[data]} />
       </Chart>
     </div>
   );

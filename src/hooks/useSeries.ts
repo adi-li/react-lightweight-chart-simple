@@ -4,7 +4,10 @@ import { SeriesContext } from '../context';
 
 /**
  * Get the series api object.
- * Only available inside any series component.
+ *
+ * ❗Only use inside `<Series />`.
+ *
+ * @returns series: `ISeriesApi`
  */
 export function useSeries() {
   return useContext(SeriesContext);

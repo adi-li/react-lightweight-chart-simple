@@ -1,12 +1,16 @@
 import type {
   IChartApi,
+  ISeriesApi,
   MouseEventHandler,
   MouseEventParams,
+  SeriesOptionsMap,
 } from 'lightweight-charts';
 import * as React from 'react';
 
 import { useChart } from '../hooks/useChart';
-import { useTransition } from '../hooks/useTransition';
+import { useSeries } from '../hooks/useSeries';
+import { getSizeFromEntry } from '../utils/getSizeFromEntry';
+import { ChartOnCrosshairMoveSubscriber } from './utils/ChartSubscribers';
 
 export type MakeTransform = (
   chart: IChartApi | undefined,
@@ -15,11 +19,24 @@ export type MakeTransform = (
   tooltipSize: { width: number; height: number },
 ) => string | undefined;
 
-interface TooltipProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface TooltipProps extends React.HTMLAttributes<HTMLDivElement> {
   /**
-   * Should return a react node which can be varied base on the crosshair event.
+   * A render function for creating `ReactNode` base on the crosshair event.
    */
-  content?: (event: MouseEventParams) => React.ReactNode;
+  content?: (props: {
+    /**
+     * crosshair event object.
+     */
+    event: MouseEventParams;
+    /**
+     * chart api object.
+     */
+    chart: IChartApi | undefined;
+    /**
+     * series api object, exist only when the component is placed inside `<Series />`.
+     */
+    series?: ISeriesApi<keyof SeriesOptionsMap> | undefined;
+  }) => React.ReactNode;
 
   /**
    * Should return a transform string for the tooltip wrapper, return `undefined` to keep unchanged.
@@ -39,7 +56,7 @@ export const DEFAULT_TOOLTIP_STYLE: React.CSSProperties = {
   transitionTimingFunction: 'ease-out',
 };
 
-const DEFAULT_SIZE = { width: 0, height: 0 };
+const DEFAULT_SIZE: [number, number] = [0, 0];
 
 /**
  * Default transform makes tooltip to be horizontally centered with cursor, and above the cursor.
@@ -53,12 +70,16 @@ export const DEFAULT_TOOLTIP_MAKE_TRANSFORM: MakeTransform = (
 ) => {
   const { point } = event ?? {};
   if (container == null || point == null) return undefined;
-  const paddingX = chart?.priceScale('left').width() ?? 0;
+  const paddingLeft = chart?.priceScale('left').width() ?? 0;
+  const paddingRight = chart?.priceScale('right').width() ?? 0;
   const { width: containerWidth } = container.getBoundingClientRect();
-  const adjustedStartingX = point.x + paddingX;
+  const adjustedStartingX = point.x + paddingLeft;
   const x = Math.max(
-    paddingX,
-    Math.min(adjustedStartingX - size.width / 2, containerWidth - size.width),
+    paddingLeft,
+    Math.min(
+      adjustedStartingX - size.width / 2,
+      containerWidth - paddingRight - size.width,
+    ),
   );
   const y = point.y - size.height - 8;
   return `translate(${x}px, ${y < 0 ? point.y + 20 : y}px)`;
@@ -66,53 +87,43 @@ export const DEFAULT_TOOLTIP_MAKE_TRANSFORM: MakeTransform = (
 
 /**
  * A tooltip will be flow in front of the chart and follow the crosshair movement.
- * Shoule only be placed inside `<Chart />`.
+ *
+ * ❗Only use inside `<Chart />` or `<Series />`.
  */
 export const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(
   function Tooltip({ content, makeTransform, style, ...rest }, ref) {
     const { chart, containerRef } = useChart();
+    const series = useSeries();
+
+    // container ref
     const divRef = React.useRef<HTMLDivElement>();
+
+    // used to keep the previous transform string
+    const previousTransformRef = React.useRef('');
+
     const [eventState, setEventState] = React.useState<
       MouseEventParams | undefined
     >();
-    const [size, setSize] = React.useState<{ width: number; height: number }>(
-      DEFAULT_SIZE,
-    );
-    const [, startTransition] = useTransition();
+
+    const [size, setSize] = React.useState<[number, number]>(DEFAULT_SIZE);
 
     React.useImperativeHandle<
       HTMLDivElement | undefined,
       HTMLDivElement | undefined
     >(ref, () => divRef.current);
 
-    // listern crosshair move event
-    React.useEffect(() => {
-      const handler: MouseEventHandler = (event) => {
-        if (!divRef.current) return;
-        // allow setting event state in a deferred way if possible
-        startTransition(() => {
-          setEventState(event);
-        });
-      };
-
-      chart?.subscribeCrosshairMove(handler);
-      return () => chart?.unsubscribeCrosshairMove(handler);
-    }, [chart]);
-
-    // used to keep the previous transform string
-    const previousTransformRef = React.useRef('');
-
     // make a merged css style for tooltip wrapper
     const mergedStyle: React.CSSProperties = React.useMemo(() => {
       const shouldHide = typeof eventState?.time !== 'number';
       const opacity = shouldHide ? 0 : 1;
+      const [width, height] = size;
       const transform = shouldHide
         ? previousTransformRef.current
         : (makeTransform ?? DEFAULT_TOOLTIP_MAKE_TRANSFORM)(
             chart,
             eventState,
             containerRef.current,
-            size,
+            { width, height },
           ) ?? previousTransformRef.current;
       const transitionProperty = previousTransformRef.current
         ? 'transform,opacity'
@@ -127,32 +138,22 @@ export const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(
       };
     }, [eventState, makeTransform, chart, containerRef, size, style]);
 
-    // observe size change
+    // crosshair move event handler
+    const handler: MouseEventHandler = React.useCallback((event) => {
+      if (!divRef.current) return;
+      setEventState(event);
+    }, []);
+
+    // observe self content size change
     React.useEffect(() => {
       const element = divRef.current;
       if (!element) return;
 
       const observer = new ResizeObserver((entries) => {
         const entry = entries[0];
-        const size = { width: 0, height: 0 };
-        if (entry.contentBoxSize) {
-          if (entry.contentBoxSize[0]) {
-            size.width = entry.contentBoxSize[0].inlineSize;
-            size.height = entry.contentBoxSize[0].blockSize;
-          } else {
-            /* eslint-disable @typescript-eslint/no-explicit-any */
-            size.width = (entry.contentBoxSize as any).inlineSize;
-            size.height = (entry.contentBoxSize as any).blockSize;
-            /* eslint-enable @typescript-eslint/no-explicit-any */
-          }
-        } else {
-          size.width = entry.contentRect.width;
-          size.height = entry.contentRect.height;
-        }
+        const size = getSizeFromEntry(entry);
         setSize((prev) =>
-          size.width === prev.width && size.height === prev.height
-            ? prev
-            : size,
+          size[0] === prev[0] && size[1] === prev[1] ? prev : size,
         );
       });
 
@@ -160,13 +161,25 @@ export const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(
       return () => observer.unobserve(element);
     }, []);
 
+    const children = React.useMemo(
+      () =>
+        eventState &&
+        content?.({
+          event: eventState,
+          chart,
+          series,
+        }),
+      [chart, content, eventState, series],
+    );
+
     return (
       <div
         {...rest}
         style={mergedStyle}
         ref={divRef as React.LegacyRef<HTMLDivElement>}
       >
-        {eventState && content?.(eventState)}
+        <ChartOnCrosshairMoveSubscriber handler={handler} />
+        {children}
       </div>
     );
   },

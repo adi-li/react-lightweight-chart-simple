@@ -17,7 +17,7 @@ import { useChart } from '../hooks/useChart';
 export interface SeriesProps<TSeriesType extends SeriesType> {
   /**
    * Data for display, used for `series.setData()`.
-   * Memoized is recommended to prevent setting multiple times.
+   * Memoization is recommended to prevent setting multiple times.
    */
   data?: SeriesDataItemTypeMap[TSeriesType][];
   /**
@@ -56,20 +56,36 @@ function makeSeries<TSeriesType extends SeriesType>(
     const [series, setSeries] = React.useState<
       ISeriesApi<TSeriesType> | undefined
     >(undefined);
+    const seriesRef = React.useRef(series);
 
-    React.useImperativeHandle(ref, () => series, [series]);
+    React.useImperativeHandle(ref, () => seriesRef.current);
 
     // create or update series by its options
     React.useEffect(() => {
       if (!chart) return;
 
-      if (!series) {
+      if (!seriesRef.current) {
         const series = create(chart, options);
+        seriesRef.current = series;
         setSeries(series);
       } else if (options) {
-        series.applyOptions(options as SeriesPartialOptionsMap[TSeriesType]);
+        seriesRef.current.applyOptions(
+          options as SeriesPartialOptionsMap[TSeriesType],
+        );
       }
-    }, [chart, series, options]);
+    }, [chart, options]);
+
+    // remove series on unmount
+    React.useEffect(() => {
+      return () => {
+        if (!seriesRef.current) return;
+        // suppress error when chart is trying remove a removed series or the chart is already removed in parent lifecycle
+        try {
+          chart?.removeSeries(seriesRef.current);
+        } catch {} // eslint-disable-line no-empty
+        seriesRef.current = undefined;
+      };
+    }, [chart]);
 
     // update data
     React.useEffect(() => {
@@ -86,18 +102,6 @@ function makeSeries<TSeriesType extends SeriesType>(
       series?.setMarkers(markers ?? []);
     }, [series, markers]);
 
-    // remove series on unmount
-    React.useEffect(() => {
-      return () => {
-        if (!series) return;
-        // suppress error when chart is trying remove a removed series
-        try {
-          chart?.removeSeries(series);
-        } catch {} // eslint-disable-line no-empty
-        setSeries(undefined);
-      };
-    }, [chart, series]);
-
     return (
       <SeriesContext.Provider value={series}>{children}</SeriesContext.Provider>
     );
@@ -108,56 +112,68 @@ function makeSeries<TSeriesType extends SeriesType>(
   return BaseSeries;
 }
 
+type SeriesRender<TSeriesType extends SeriesType> = SeriesProps<TSeriesType> &
+  React.RefAttributes<ISeriesApi<TSeriesType> | undefined>;
+
+export type Series<TSeriesType extends SeriesType> =
+  React.ForwardRefExoticComponent<SeriesRender<TSeriesType>>;
+
 /**
- * Create an area series for the chart, should only be nested inside `<Chart />`.
+ * Create an area series for the chart
+ *
+ * ❗Only use inside `<Chart />`.
  */
-export const AreaSeries = React.forwardRef(
-  makeSeries<'Area'>('AreaSeries', (chart, options) =>
-    chart.addAreaSeries(options),
-  ),
+export const AreaSeries: Series<'Area'> = React.forwardRef(
+  makeSeries('AreaSeries', (chart, options) => chart.addAreaSeries(options)),
 );
 
 /**
- * Create a bar series for the chart, should only be nested inside `<Chart />`.
+ * Create a bar series for the chart.
+ *
+ * ❗Only use inside `<Chart />`.
  */
-export const BarSeries = React.forwardRef(
-  makeSeries<'Bar'>('BarSeries', (chart, options) =>
-    chart.addBarSeries(options),
-  ),
+export const BarSeries: Series<'Bar'> = React.forwardRef(
+  makeSeries('BarSeries', (chart, options) => chart.addBarSeries(options)),
 );
 
 /**
- * Create a baseline series for the chart, should only be nested inside `<Chart />`.
+ * Create a baseline series for the chart.
+ *
+ * ❗Only use inside `<Chart />`.
  */
-export const BaselineSeries = React.forwardRef(
-  makeSeries<'Baseline'>('BaselineSeries', (chart, options) =>
+export const BaselineSeries: Series<'Baseline'> = React.forwardRef(
+  makeSeries('BaselineSeries', (chart, options) =>
     chart.addBaselineSeries(options),
   ),
 );
 
 /**
- * Create a candlestick series for the chart, should only be nested inside `<Chart />`.
+ * Create a candlestick series for the chart.
+ *
+ * ❗Only use inside `<Chart />`.
  */
-export const CandlestickSeries = React.forwardRef(
-  makeSeries<'Candlestick'>('CandlestickSeries', (chart, options) =>
+export const CandlestickSeries: Series<'Candlestick'> = React.forwardRef(
+  makeSeries('CandlestickSeries', (chart, options) =>
     chart.addCandlestickSeries(options),
   ),
 );
 
 /**
- * Create a histogram series for the chart, should only be nested inside `<Chart />`.
+ * Create a histogram series for the chart.
+ *
+ * ❗Only use inside `<Chart />`.
  */
-export const HistogramSeries = React.forwardRef(
-  makeSeries<'Histogram'>('HistogramSeries', (chart, options) =>
+export const HistogramSeries: Series<'Histogram'> = React.forwardRef(
+  makeSeries('HistogramSeries', (chart, options) =>
     chart.addHistogramSeries(options),
   ),
 );
 
 /**
- * Create a line series for the chart, should only be nested inside `<Chart />`.
+ * Create a line series for the chart.
+ *
+ * ❗Only use inside `<Chart />`.
  */
-export const LineSeries = React.forwardRef(
-  makeSeries<'Line'>('LineSeries', (chart, options) =>
-    chart.addLineSeries(options),
-  ),
+export const LineSeries: Series<'Line'> = React.forwardRef(
+  makeSeries('LineSeries', (chart, options) => chart.addLineSeries(options)),
 );

@@ -11,195 +11,173 @@ import {
 import * as React from 'react';
 
 import { ChartContext } from '../context';
+import { ChartAutoResizer } from './utils/ChartAutoResizer';
+import { ChartFitContentTrigger } from './utils/ChartFitContentTrigger';
+import {
+  ChartOnClickSubscriber,
+  ChartOnCrosshairMoveSubscriber,
+  TimeScaleOnSizeChangeSubscriber,
+  TimeScaleOnVisibleLogicalRangeChangeSubscriber,
+  TimeScaleOnVisibleTimeRangeChangeSubscriber,
+} from './utils/ChartSubscribers';
 
 interface ChartProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onClick'> {
   /**
-   * The width of chart in pixel.
+   * The width of chart in pixel, and it is merged into `options`.
+   *
+   * If both `width` and `height` provided and > 0, will call `chart.resize(width, height)` automatically.
    */
   width?: number;
   /**
-   * The height of chart in pixel.
+   * The height of chart in pixel, and it is merged into `options`.
+   *
+   * If both `width` and `height` provided and > 0, will call `chart.resize(width, height)` automatically.
    */
   height?: number;
   /**
    * The chart options, please refer to `lightweight-charts` documents.
+   *
    * Memoization is recommended to prevent calling `chart.applyOptions()` multiple times.
    */
-  options?: Omit<DeepPartial<ChartOptions>, 'width' | 'height'>;
+  options?: DeepPartial<ChartOptions>;
   /**
-   * Handler for chart click event (related API: `chart.subscribeClick()`).
+   * `true` to disable nesting `<ChartAutoResizer />` automatically.
+   */
+  disableAutoResize?: boolean;
+  /**
+   * `true` to disable nesting `<ChartFitContentTrigger />` automatically.
+   */
+  disableAutoContentFitOnInit?: boolean;
+  /**
+   * Handler for click event (related API: `chart.subscribeClick()`).
+   * Or use `<ChartOnClickSubscriber />` instead.
    */
   onClick?: MouseEventHandler;
   /**
    * Handler for crosshair move event (related API: `chart.subscribeCrosshairMove()`).
+   * Or use `<ChartOnCrosshairMoveSubscriber />` instead.
    */
   onCrosshairMove?: MouseEventHandler;
   /**
    * Handler for time scale size change event (related API: `chart.timeScale().subscribeSizeChange()`).
+   * Or use `<TimeScaleOnSizeChangeSubscriber />` instead.
    */
   onTimeScaleSizeChange?: SizeChangeEventHandler;
   /**
    * Handler for visible time range change event (related API: `chart.timeScale().subscribeVisibleTimeRangeChange()`).
+   * Or use `<TimeScaleOnVisibleTimeRangeChangeSubscriber />` instead.
    */
   onVisibleTimeRangeChange?: TimeRangeChangeEventHandler;
   /**
    * Handler for visible logical range change event (related API: `chart.timeScale().subscribeVisibleLogicalRangeChange()`).
+   * Or use `<TimeScaleOnVisibleLogicalRangeChangeSubscriber />` instead.
    */
   onVisibleLogicalRangeChange?: LogicalRangeChangeEventHandler;
-  /**
-   * `ref` for getting chart container, which is a `<div />` element.
-   */
-  containerRef?: React.Ref<HTMLDivElement>;
 }
 
 /**
  * The main wrapper for the series.
  */
-export const Chart = React.forwardRef<IChartApi | undefined, ChartProps>(
-  function Chart(
-    {
-      width,
-      height,
-      options,
-      onClick,
-      onCrosshairMove,
-      onTimeScaleSizeChange,
-      onVisibleTimeRangeChange,
-      onVisibleLogicalRangeChange,
-      containerRef,
-      children,
-      style,
-      ...rest
-    },
-    ref,
-  ) {
-    const divRef = React.useRef<HTMLDivElement>();
-    const [chart, setChart] = React.useState<IChartApi | undefined>();
-
-    React.useImperativeHandle(ref, () => chart, [chart]);
-    React.useImperativeHandle<
-      HTMLDivElement | undefined,
-      HTMLDivElement | undefined
-    >(containerRef, () => divRef.current);
-
-    const mergedOptions = React.useMemo(
-      () => ({ width, height, ...options }),
-      [width, height, options],
-    );
-
-    // create or update chart by options
-    React.useEffect(() => {
-      if (!divRef.current) return;
-      if (!chart) {
-        const chart = createChart(divRef.current, mergedOptions);
-        setChart(chart);
-      } else if (mergedOptions) {
-        chart.applyOptions(mergedOptions);
-      }
-    }, [chart, mergedOptions]);
-
-    // resize
-    React.useEffect(() => {
-      if (!divRef.current) return;
-      if (mergedOptions.width != null && mergedOptions.height != null) {
-        chart?.resize(mergedOptions.width, mergedOptions.height);
-        return;
-      }
-
-      const handler = () => {
-        const width =
-          (mergedOptions.width == null
-            ? divRef.current?.parentElement?.clientWidth
-            : mergedOptions.width) ?? 0;
-        const height =
-          (mergedOptions.height == null
-            ? divRef.current?.parentElement?.clientHeight
-            : mergedOptions.height) ?? 0;
-        chart?.resize(width, height);
-      };
-
-      handler();
-      window.addEventListener('resize', handler);
-      return () => window.removeEventListener('resize', handler);
-    }, [chart, mergedOptions.width, mergedOptions.height]);
-
-    // fit content when chart init
-    React.useEffect(() => {
-      setTimeout(() => chart?.timeScale().fitContent(), 0);
-    }, [chart]);
-
-    // click listerning
-    React.useEffect(() => {
-      if (!onClick) return;
-      chart?.subscribeClick(onClick);
-      return () => chart?.unsubscribeClick(onClick);
-    }, [chart, onClick]);
-
-    // crosshair move listerning
-    React.useEffect(() => {
-      if (!onCrosshairMove) return;
-      chart?.subscribeCrosshairMove(onCrosshairMove);
-      return () => chart?.unsubscribeClick(onCrosshairMove);
-    }, [chart, onCrosshairMove]);
-
-    // visible time range change listerning
-    React.useEffect(() => {
-      if (!onVisibleTimeRangeChange) return;
-      chart
-        ?.timeScale()
-        .subscribeVisibleTimeRangeChange(onVisibleTimeRangeChange);
-      return () =>
-        chart
-          ?.timeScale()
-          .unsubscribeVisibleTimeRangeChange(onVisibleTimeRangeChange);
-    }, [chart, onVisibleTimeRangeChange]);
-
-    // visible logical range change listerning
-    React.useEffect(() => {
-      if (!onVisibleLogicalRangeChange) return;
-      chart
-        ?.timeScale()
-        .subscribeVisibleLogicalRangeChange(onVisibleLogicalRangeChange);
-      return () =>
-        chart
-          ?.timeScale()
-          .unsubscribeVisibleLogicalRangeChange(onVisibleLogicalRangeChange);
-    }, [chart, onVisibleLogicalRangeChange]);
-
-    // time scale size change listerning
-    React.useEffect(() => {
-      if (!onTimeScaleSizeChange) return;
-      chart?.timeScale().subscribeSizeChange(onTimeScaleSizeChange);
-      return () =>
-        chart?.timeScale().unsubscribeSizeChange(onTimeScaleSizeChange);
-    }, [chart, onTimeScaleSizeChange]);
-
-    // remove chart when unmount
-    React.useEffect(() => {
-      return () => {
-        chart?.remove();
-      };
-    }, [chart]);
-
-    const contextValue = React.useMemo(
-      () => ({
-        chart,
-        containerRef: divRef as React.RefObject<HTMLDivElement>,
-      }),
-      [chart],
-    );
-
-    return (
-      <ChartContext.Provider value={contextValue}>
-        <div
-          {...rest}
-          style={{ ...style, position: 'relative' }}
-          ref={divRef as React.LegacyRef<HTMLDivElement>}
-        >
-          {children}
-        </div>
-      </ChartContext.Provider>
-    );
+export const Chart = React.forwardRef<
+  | { chart: IChartApi | undefined; container: HTMLDivElement | undefined }
+  | undefined,
+  ChartProps
+>(function Chart(
+  {
+    width,
+    height,
+    options,
+    disableAutoResize,
+    disableAutoContentFitOnInit,
+    onClick,
+    onCrosshairMove,
+    onTimeScaleSizeChange,
+    onVisibleTimeRangeChange,
+    onVisibleLogicalRangeChange,
+    children,
+    style,
+    ...rest
   },
-);
+  ref,
+) {
+  const divRef = React.useRef<HTMLDivElement>();
+  const [chart, setChart] = React.useState<IChartApi | undefined>();
+  const chartRef = React.useRef(chart);
+
+  React.useImperativeHandle(ref, () => ({
+    chart: chartRef.current,
+    container: divRef.current,
+  }));
+
+  const mergedOptions = React.useMemo(
+    () => ({ width, height, ...options }),
+    [width, height, options],
+  );
+
+  // create or update chart by options
+  React.useEffect(() => {
+    if (!divRef.current) return;
+    if (!chartRef.current) {
+      const chart = createChart(divRef.current, mergedOptions);
+      chartRef.current = chart;
+      setChart(chart);
+    } else {
+      chartRef.current.applyOptions(mergedOptions);
+    }
+  }, [mergedOptions]);
+
+  // resize if width or height option provided
+  React.useEffect(() => {
+    if (mergedOptions.width && mergedOptions.height) {
+      chart?.resize(mergedOptions.width, mergedOptions.height);
+    }
+  }, [chart, mergedOptions.width, mergedOptions.height]);
+
+  // remove chart when unmount
+  React.useEffect(() => {
+    return () => {
+      chartRef.current?.remove();
+      chartRef.current = undefined;
+    };
+  }, []);
+
+  const contextValue = React.useMemo(
+    () => ({
+      chart,
+      containerRef: divRef as React.RefObject<HTMLDivElement>,
+    }),
+    [chart],
+  );
+
+  return (
+    <ChartContext.Provider value={contextValue}>
+      <div
+        {...rest}
+        style={{ ...style, position: 'relative' }}
+        ref={divRef as React.LegacyRef<HTMLDivElement>}
+      >
+        {children}
+        {!disableAutoResize && <ChartAutoResizer />}
+        {!disableAutoContentFitOnInit && <ChartFitContentTrigger />}
+        {onClick && <ChartOnClickSubscriber handler={onClick} />}
+        {onCrosshairMove && (
+          <ChartOnCrosshairMoveSubscriber handler={onCrosshairMove} />
+        )}
+        {onTimeScaleSizeChange && (
+          <TimeScaleOnSizeChangeSubscriber handler={onTimeScaleSizeChange} />
+        )}
+        {onVisibleTimeRangeChange && (
+          <TimeScaleOnVisibleTimeRangeChangeSubscriber
+            handler={onVisibleTimeRangeChange}
+          />
+        )}
+        {onVisibleLogicalRangeChange && (
+          <TimeScaleOnVisibleLogicalRangeChangeSubscriber
+            handler={onVisibleLogicalRangeChange}
+          />
+        )}
+      </div>
+    </ChartContext.Provider>
+  );
+});
