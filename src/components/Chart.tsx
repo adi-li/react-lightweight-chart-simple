@@ -21,7 +21,7 @@ import {
   TimeScaleOnVisibleTimeRangeChangeSubscriber,
 } from './utils/ChartSubscribers';
 
-interface ChartProps
+export interface ChartProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onClick'> {
   /**
    * The width of chart in pixel, and it is merged into `options`.
@@ -74,16 +74,23 @@ interface ChartProps
    * Or use `<TimeScaleOnVisibleLogicalRangeChangeSubscriber />` instead.
    */
   onVisibleLogicalRangeChange?: LogicalRangeChangeEventHandler;
+  /**
+   * Handler for chart initialized
+   */
+  onInit?: (chart: IChartApi, container?: HTMLDivElement) => void;
 }
+
+export type ChartObject =
+  | {
+      chart: IChartApi | undefined;
+      container: HTMLDivElement | undefined;
+    }
+  | undefined;
 
 /**
  * The main wrapper for the series.
  */
-export const Chart = React.forwardRef<
-  | { chart: IChartApi | undefined; container: HTMLDivElement | undefined }
-  | undefined,
-  ChartProps
->(function Chart(
+export const Chart = React.forwardRef<ChartObject, ChartProps>(function Chart(
   {
     width,
     height,
@@ -95,6 +102,7 @@ export const Chart = React.forwardRef<
     onTimeScaleSizeChange,
     onVisibleTimeRangeChange,
     onVisibleLogicalRangeChange,
+    onInit,
     children,
     style,
     ...rest
@@ -141,6 +149,12 @@ export const Chart = React.forwardRef<
       chartRef.current = undefined;
     };
   }, []);
+
+  // trigger onInit when chart is created
+  React.useEffect(() => {
+    if (!chart) return;
+    onInit?.(chart, divRef.current);
+  }, [chart, onInit]);
 
   const contextValue = React.useMemo(
     () => ({

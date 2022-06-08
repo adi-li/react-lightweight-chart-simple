@@ -24,10 +24,10 @@ export const PriceLine = (props: Partial<PriceLineOptions>) => {
   // remove price line
   useEffect(() => {
     return () => {
-      if (!priceLineRef.current) return;
+      if (!priceLineRef.current || !series) return;
       // suppress error when series is trying remove a removed price line or the chart is already removed in parent lifecycle
       try {
-        series?.removePriceLine(priceLineRef.current);
+        series.removePriceLine(priceLineRef.current);
       } catch {} // eslint-disable-line no-empty
       priceLineRef.current = undefined;
     };

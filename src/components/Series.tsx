@@ -78,10 +78,10 @@ function makeSeries<TSeriesType extends SeriesType>(
     // remove series on unmount
     React.useEffect(() => {
       return () => {
-        if (!seriesRef.current) return;
+        if (!seriesRef.current || !chart) return;
         // suppress error when chart is trying remove a removed series or the chart is already removed in parent lifecycle
         try {
-          chart?.removeSeries(seriesRef.current);
+          chart.removeSeries(seriesRef.current);
         } catch {} // eslint-disable-line no-empty
         seriesRef.current = undefined;
       };

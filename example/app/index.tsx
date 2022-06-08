@@ -14,6 +14,7 @@ import {
   AreaSeries,
   Chart,
   ChartFitContentTrigger,
+  ChartObject,
   HistogramSeries,
   PriceLine,
   Tooltip,
@@ -130,23 +131,30 @@ export const App = () => {
     [],
   );
 
-  return (
-    <div style={{ minHeight: '500px', padding: '1rem' }}>
-      <Chart options={chartOptions} disableAutoContentFitOnInit>
-        <HistogramSeries data={data} options={histogramOptions}>
-          <Tooltip content={TooltipContent} />
-          {Array.from(Array(lines).keys()).map((price) => (
-            <PriceLine key={price} price={(price + 1) * 750} />
-          ))}
-        </HistogramSeries>
+  const refCb = React.useRef<ChartObject>();
 
-        <AreaSeries data={areaData} options={areaOptions} markers={markers}>
-          {Array.from(Array(lines).keys()).map((price) => (
-            <PriceLine key={price} price={(price + 1) * 500} color="green" />
-          ))}
-        </AreaSeries>
-        <ChartFitContentTrigger deps={[data]} />
-      </Chart>
-    </div>
+  return (
+    <>
+      <div style={{ minHeight: '500px', padding: '1rem' }}>
+        <Chart ref={refCb} options={chartOptions} disableAutoContentFitOnInit>
+          <HistogramSeries data={data} options={histogramOptions}>
+            <Tooltip content={TooltipContent} />
+            {Array.from(Array(lines).keys()).map((price) => (
+              <PriceLine key={price} price={(price + 1) * 750} />
+            ))}
+          </HistogramSeries>
+
+          <AreaSeries data={areaData} options={areaOptions} markers={markers}>
+            {Array.from(Array(lines).keys()).map((price) => (
+              <PriceLine key={price} price={(price + 1) * 500} color="green" />
+            ))}
+          </AreaSeries>
+          <ChartFitContentTrigger deps={[data]} />
+        </Chart>
+      </div>
+      <button onClick={() => console.log(refCb.current?.chart?.options())}>
+        Log chart options to console
+      </button>
+    </>
   );
 };
