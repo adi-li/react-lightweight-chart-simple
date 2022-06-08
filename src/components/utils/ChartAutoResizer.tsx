@@ -20,6 +20,25 @@ const DEFAULT_TRIGGER_SOURCE =
     ? ChartAutoResizerTriggerSource.parentResize
     : ChartAutoResizerTriggerSource.windowResize;
 
+export type ResizeHandler = (
+  /**
+   * chart object
+   */
+  chart: IChartApi,
+  /**
+   * new chart width
+   */
+  width: number,
+  /**
+   * new chart height
+   */
+  height: number,
+  /**
+   * container element
+   */
+  container: HTMLDivElement | null,
+) => void;
+
 export interface ChartAutoResizerProps {
   /**
    * Source to trigger, from window's `resize` event or use `ResizeObserver`
@@ -31,7 +50,7 @@ export interface ChartAutoResizerProps {
   /**
    * Callback when resize triggered.
    */
-  onResize?: (chart: IChartApi | undefined) => void;
+  onResize?: ResizeHandler;
 }
 
 /**
@@ -47,10 +66,10 @@ export const ChartAutoResizer = ({
   const { chart, containerRef } = useChart();
 
   useEffect(() => {
-    if (triggerSource === 0) return;
+    if (triggerSource === 0 || !chart) return;
 
     const handler = (entriesOrEvent?: ResizeObserverEntry[] | Event) => {
-      const options: DeepPartial<ChartOptions> = chart?.options() ?? {};
+      const options: DeepPartial<ChartOptions> = chart.options();
 
       const [observedWidth, observedHeight] = Array.isArray(entriesOrEvent)
         ? getSizeFromEntry(entriesOrEvent[0])
@@ -69,9 +88,9 @@ export const ChartAutoResizer = ({
 
       const width = options.width || observedWidth;
       const height = options.height || observedHeight;
-      chart?.resize(width, height);
+      chart.resize(width, height);
 
-      onResize?.(chart);
+      onResize?.(chart, width, height, containerRef.current);
     };
 
     // first run
