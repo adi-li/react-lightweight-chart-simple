@@ -2,7 +2,7 @@
 
 A simple react wrapper for [lightweight-charts](https://github.com/tradingview/lightweight-charts) library.
 
-:warning: This is a beta library currently, may have some breakable changes released without notice.
+:warning: This is a beta library currently, may have some breaking changes released without notice.
 
 ## Installation
 
